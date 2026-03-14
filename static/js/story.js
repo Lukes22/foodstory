@@ -104,6 +104,10 @@ function renderState(data) {
         if (data.is_complete) {
             inputArea.style.display = 'none';
             completeArea.style.display = 'block';
+            // Auto-show ending card on page load when adventure is complete
+            if (data.boss_name) {
+                setTimeout(() => showEndingCard(data), 500);
+            }
         } else if (data.next_meal) {
             inputArea.style.display = 'block';
             completeArea.style.display = 'none';
@@ -290,7 +294,12 @@ function showEndingCard(data) {
 
     // Ending text
     const textEl = document.getElementById('ending-card-text');
-    textEl.innerHTML = data.ending_text ? highlightBrackets(data.ending_text) : '';
+    if (data.ending_text) {
+        textEl.innerHTML = highlightBrackets(data.ending_text);
+        textEl.style.display = 'block';
+    } else {
+        textEl.style.display = 'none';
+    }
 
     overlay.style.display = 'flex';
 }
@@ -312,7 +321,7 @@ function closeEndingCard(event, force) {
 }
 
 function viewEndingCard() {
-    if (currentState && currentState.is_complete && currentState.ending_text) {
+    if (currentState && currentState.is_complete) {
         showEndingCard(currentState);
     }
 }
@@ -499,9 +508,11 @@ async function submitMeal() {
                         changes.innerHTML = changesHtml;
                         section.appendChild(changes);
 
-                        // Show ending card if dinner
-                        if (event.ending_text) {
-                            appendEnding(event.ending_text);
+                        // Show ending card if dinner (check mealType)
+                        if (mealType === 'dinner') {
+                            if (event.ending_text) {
+                                appendEnding(event.ending_text);
+                            }
                             scrollStoryToBottom();
 
                             // Show ending card with boss comparison after a brief delay
@@ -515,7 +526,7 @@ async function submitMeal() {
                                     health: event.new_health,
                                     sanity: event.new_sanity,
                                     strength: event.new_strength,
-                                    ending_text: event.ending_text,
+                                    ending_text: event.ending_text || '',
                                 });
                             }, 800);
                         }

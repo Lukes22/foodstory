@@ -12,7 +12,7 @@ def get_ai_client():
     )
 
 
-SYSTEM_PROMPT = """你是一个RPG游戏系统"美食副本引擎"。你把玩家每餐吃的食物转化为RPG装备、药水和状态效果。
+SYSTEM_PROMPT = """你是一个RPG游戏系统"食友记副本引擎"。你把玩家每餐吃的食物转化为RPG装备、药水和状态效果。
 
 重要限制:
 - 只根据玩家当前输入的食物生成装备和效果，绝对不要自己编造额外的食物、饮料或道具
@@ -247,12 +247,29 @@ def parse_ai_response(full_text):
     if match:
         story_text = full_text[:match.start()].strip()
 
-    # Handle dinner ending
+    # Handle dinner ending - flexible separator matching
     ending_text = ''
-    if '=== 冒险结局 ===' in story_text:
-        parts = story_text.split('=== 冒险结局 ===', 1)
-        story_text = parts[0].strip()
-        ending_text = parts[1].strip() if len(parts) > 1 else ''
+    # Pattern 1: === 冒险结局 === with flexible equals/spaces/fullwidth chars
+    sep_match = re.search(r'[=＝]{2,}\s*冒险结局\s*[=＝]{2,}', story_text)
+    if sep_match:
+        ending_text = story_text[sep_match.end():].strip()
+        story_text = story_text[:sep_match.start()].strip()
+    elif '冒险结局' in story_text:
+        # Pattern 2: "冒险结局" as standalone text (AI omitted equals signs)
+        parts = story_text.split('冒险结局', 1)
+        candidate = parts[1].strip() if len(parts) > 1 else ''
+        if candidate:
+            ending_text = candidate
+            story_text = parts[0].strip().rstrip('=＝ \n')
+    else:
+        # Pattern 3: look for "恭喜获得结局【...】" as ending marker
+        end_match = re.search(
+            r'((?:^|\n).*恭喜获得结局【[^】]+】[！!]?\s*)$',
+            story_text, re.DOTALL
+        )
+        if end_match:
+            ending_text = end_match.group(1).strip()
+            story_text = story_text[:end_match.start()].strip()
 
     return {
         'story_text': story_text,
