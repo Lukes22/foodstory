@@ -8,7 +8,7 @@ from extensions import db
 from models import DailyStory, MealEntry
 from ai_service import (
     build_opening_messages, build_meal_messages,
-    stream_ai_response, parse_ai_response, clamp_stat,
+    stream_ai_response, parse_ai_response, parse_opening_response, clamp_stat,
 )
 
 story_bp = Blueprint('story', __name__, url_prefix='/story')
@@ -71,6 +71,10 @@ def status():
         'strength': story.strength,
         'equipment': story.get_equipment_list(),
         'potions': story.get_potion_list(),
+        'boss_name': story.boss_name or '',
+        'boss_health': story.boss_health,
+        'boss_sanity': story.boss_sanity,
+        'boss_strength': story.boss_strength,
         'meals': meals,
         'next_meal': next_meal,
         'next_meal_label': next_meal_label,
@@ -102,7 +106,14 @@ def start():
         full_text = ''.join(collected)
 
         if full_text:
-            DailyStory.query.filter_by(id=story.id).update({'opening_text': full_text})
+            clean_text, boss_data = parse_opening_response(full_text)
+            DailyStory.query.filter_by(id=story.id).update({
+                'opening_text': clean_text,
+                'boss_name': boss_data['boss_name'],
+                'boss_health': boss_data['boss_health'],
+                'boss_sanity': boss_data['boss_sanity'],
+                'boss_strength': boss_data['boss_strength'],
+            })
             db.session.commit()
 
         yield sse_format({'type': 'done'})
@@ -219,6 +230,7 @@ def meal():
             'new_health': new_health,
             'new_sanity': new_sanity,
             'new_strength': new_strength,
+            'story_text': parsed['story_text'],
             'ending_text': parsed['ending_text'],
         })
 

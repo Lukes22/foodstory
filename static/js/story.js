@@ -58,7 +58,6 @@ function renderState(data) {
     const storyContent = document.getElementById('story-content');
     const inputArea = document.getElementById('input-area');
     const completeArea = document.getElementById('complete-area');
-    const btnStart = document.getElementById('btn-start');
 
     // If story has opening, show content
     if (data.opening_text) {
@@ -73,6 +72,11 @@ function renderState(data) {
             openingHeader = '\u{1F3F0} ' + titleMatch[1].trim();
         }
         appendStorySection('opening', openingHeader, data.opening_text);
+
+        // Show boss info bar if boss exists
+        if (data.boss_name) {
+            appendBossBar(data);
+        }
 
         // Render past meals
         for (const meal of data.meals) {
@@ -130,7 +134,6 @@ function renderEquipment(equipment) {
     const noEquip = document.getElementById('no-equipment');
     if (!equipment || equipment.length === 0) {
         noEquip.style.display = 'inline';
-        // Remove any tags
         list.querySelectorAll('.equipment-tag').forEach(el => el.remove());
     } else {
         noEquip.style.display = 'none';
@@ -173,6 +176,19 @@ function addPotionTag(item) {
     list.appendChild(tag);
 
     setTimeout(() => tag.classList.remove('new'), 1200);
+}
+
+function appendBossBar(data) {
+    const storyContent = document.getElementById('story-content');
+    const bar = document.createElement('div');
+    bar.className = 'boss-bar';
+    bar.innerHTML =
+        `<span class="boss-bar-icon">\u{1F47E}</span> ` +
+        `<span class="boss-bar-name">Boss: ${escapeHtml(data.boss_name)}</span>` +
+        `<span class="boss-bar-stats">` +
+        `\u2764${data.boss_health} \u26A1${data.boss_sanity} \u2694${data.boss_strength}` +
+        `</span>`;
+    storyContent.appendChild(bar);
 }
 
 function appendStorySection(id, header, text, changes) {
@@ -226,6 +242,82 @@ function scrollStoryToBottom() {
     const area = document.getElementById('story-area');
     area.scrollTop = area.scrollHeight;
 }
+
+// ===== Ending Card =====
+
+function showEndingCard(data) {
+    const overlay = document.getElementById('ending-overlay');
+    if (!overlay) return;
+
+    // Title - extract dungeon name
+    let title = '\u526F\u672C\u7ED3\u7B97';
+    const openText = data.opening_text || '';
+    const tm = openText.match(/【副本名称】(.+)/);
+    if (tm) title = tm[1].trim();
+    document.getElementById('ending-card-title').textContent = title;
+
+    // Boss info
+    const bossEl = document.getElementById('ending-card-boss');
+    if (data.boss_name) {
+        bossEl.textContent = '\u{1F47E} Boss: ' + data.boss_name;
+        bossEl.style.display = 'block';
+    } else {
+        bossEl.style.display = 'none';
+    }
+
+    // Stat comparison
+    const compEl = document.getElementById('ending-card-comparison');
+    const healthWin = data.health >= (data.boss_health || 100);
+    const sanityWin = data.sanity >= (data.boss_sanity || 100);
+    const strengthWin = data.strength >= (data.boss_strength || 100);
+    const wins = [healthWin, sanityWin, strengthWin].filter(Boolean).length;
+    const victory = wins >= 2;
+
+    compEl.innerHTML =
+        buildStatCompare('\u2764', '\u751F\u547D', data.health, data.boss_health || 100, healthWin) +
+        buildStatCompare('\u26A1', '\u654F\u6377', data.sanity, data.boss_sanity || 100, sanityWin) +
+        buildStatCompare('\u2694', '\u529B\u91CF', data.strength, data.boss_strength || 100, strengthWin);
+
+    // Result
+    const resultEl = document.getElementById('ending-card-result');
+    if (victory) {
+        resultEl.textContent = '\u2694 \u526F\u672C\u6311\u6218\u6210\u529F \u2694';
+        resultEl.className = 'ending-card-result victory';
+    } else {
+        resultEl.textContent = '\u{1F480} \u526F\u672C\u6311\u6218\u5931\u8D25 \u{1F480}';
+        resultEl.className = 'ending-card-result defeat';
+    }
+
+    // Ending text
+    const textEl = document.getElementById('ending-card-text');
+    textEl.innerHTML = data.ending_text ? highlightBrackets(data.ending_text) : '';
+
+    overlay.style.display = 'flex';
+}
+
+function buildStatCompare(icon, label, playerVal, bossVal, win) {
+    const cls = win ? 'win' : 'lose';
+    return `<div class="stat-compare ${cls}">` +
+        `<div class="stat-compare-icon">${icon}</div>` +
+        `<div class="stat-compare-label">${label}</div>` +
+        `<div class="stat-compare-values">${playerVal} vs ${bossVal}</div>` +
+        `<div class="stat-compare-mark">${win ? '\u2714' : '\u2718'}</div>` +
+        `</div>`;
+}
+
+function closeEndingCard(event, force) {
+    if (force || event.target.id === 'ending-overlay') {
+        document.getElementById('ending-overlay').style.display = 'none';
+    }
+}
+
+function viewEndingCard() {
+    if (currentState && currentState.is_complete && currentState.ending_text) {
+        showEndingCard(currentState);
+    }
+}
+
+// ===== Adventure Start =====
 
 async function startAdventure() {
     const btn = document.getElementById('btn-start');
@@ -281,16 +373,7 @@ async function startAdventure() {
                         textEl.textContent += event.content;
                         scrollStoryToBottom();
                     } else if (event.type === 'done') {
-                        // Update section header with dungeon title
-                        const fullText = textEl.textContent;
-                        const tm = fullText.match(/【副本名称】(.+)/);
-                        if (tm) {
-                            const headerEl = storyContent.querySelector('#section-opening .story-section-header');
-                            if (headerEl) headerEl.textContent = '\u{1F3F0} ' + tm[1].trim();
-                        }
-                        // Re-render with highlighting
-                        textEl.innerHTML = highlightBrackets(fullText);
-                        // Reload status to get next meal info
+                        // Reload status to get clean text + boss info
                         await loadStatus();
                     } else if (event.type === 'error') {
                         textEl.textContent += '\n\n[错误: ' + event.message + ']';
@@ -309,6 +392,8 @@ async function startAdventure() {
     btn.disabled = false;
     btn.textContent = '开始今日冒险';
 }
+
+// ===== Meal Submission =====
 
 async function submitMeal() {
     const input = document.getElementById('food-input');
@@ -373,8 +458,12 @@ async function submitMeal() {
                         textEl.textContent += event.content;
                         scrollStoryToBottom();
                     } else if (event.type === 'result') {
-                        // Re-render story text with bracket highlighting
-                        textEl.innerHTML = highlightBrackets(textEl.textContent);
+                        // Replace streamed text with clean parsed story_text
+                        if (event.story_text) {
+                            textEl.innerHTML = highlightBrackets(event.story_text);
+                        } else {
+                            textEl.innerHTML = highlightBrackets(textEl.textContent);
+                        }
 
                         animateStatChange('health', event.health_change, event.new_health);
                         animateStatChange('sanity', event.sanity_change, event.new_sanity);
@@ -410,9 +499,25 @@ async function submitMeal() {
                         changes.innerHTML = changesHtml;
                         section.appendChild(changes);
 
-                        // Show ending if dinner
+                        // Show ending card if dinner
                         if (event.ending_text) {
                             appendEnding(event.ending_text);
+                            scrollStoryToBottom();
+
+                            // Show ending card with boss comparison after a brief delay
+                            setTimeout(() => {
+                                showEndingCard({
+                                    opening_text: currentState ? currentState.opening_text : '',
+                                    boss_name: currentState ? currentState.boss_name : '',
+                                    boss_health: currentState ? currentState.boss_health : 100,
+                                    boss_sanity: currentState ? currentState.boss_sanity : 100,
+                                    boss_strength: currentState ? currentState.boss_strength : 100,
+                                    health: event.new_health,
+                                    sanity: event.new_sanity,
+                                    strength: event.new_strength,
+                                    ending_text: event.ending_text,
+                                });
+                            }, 800);
                         }
 
                         scrollStoryToBottom();
@@ -492,8 +597,8 @@ function highlightBrackets(text) {
     // Highlight checks like 【检定：敏捷>60，成功！】
     html = html.replace(/【(检定[^】]+)】/g,
         '<span class="bracket-check">【$1】</span>');
-    // Highlight opening labels: 【副本背景】【副本等级】【当前身份】
-    html = html.replace(/【(副本背景|副本等级|当前身份)】/g,
+    // Highlight opening labels: 【副本名称】【副本背景】【副本等级】【当前身份】【副本Boss】
+    html = html.replace(/【(副本名称|副本背景|副本等级|当前身份|副本Boss)】/g,
         '<span class="bracket-label">【$1】</span>');
     // Highlight remaining 【...】 (equipment, potion, status, ending names etc.)
     html = html.replace(/【([^】]+)】/g, function(match, inner) {

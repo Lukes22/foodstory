@@ -62,7 +62,22 @@
     </div>
 
     <div class="input-area" id="complete-area" style="display:none;">
-        <div class="input-complete">今日冒险已结束! 明日再来挑战吧</div>
+        <div class="complete-content">
+            <span class="input-complete">今日冒险已结束!</span>
+            <button class="btn btn-primary btn-small" onclick="viewEndingCard()">查看结局卡片</button>
+        </div>
+    </div>
+</div>
+
+<!-- Ending Card Overlay -->
+<div class="ending-overlay" id="ending-overlay" style="display:none;" onclick="closeEndingCard(event)">
+    <div class="ending-card">
+        <div class="ending-card-title" id="ending-card-title"></div>
+        <div class="ending-card-boss" id="ending-card-boss"></div>
+        <div class="ending-card-comparison" id="ending-card-comparison"></div>
+        <div class="ending-card-result" id="ending-card-result"></div>
+        <div class="ending-card-text" id="ending-card-text"></div>
+        <button class="btn btn-primary" onclick="closeEndingCard(event, true)">关闭</button>
     </div>
 </div>
 {% endblock %}

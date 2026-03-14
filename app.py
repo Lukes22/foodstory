@@ -24,6 +24,10 @@ def create_app():
             for table, col, col_type, default in [
                 ('daily_stories', 'potion_summary', 'TEXT', "'[]'"),
                 ('meal_entries', 'potion_gained', 'VARCHAR(200)', "''"),
+                ('daily_stories', 'boss_name', 'VARCHAR(100)', "''"),
+                ('daily_stories', 'boss_health', 'INTEGER', "100"),
+                ('daily_stories', 'boss_sanity', 'INTEGER', "100"),
+                ('daily_stories', 'boss_strength', 'INTEGER', "100"),
             ]:
                 try:
                     conn.execute(db.text(
