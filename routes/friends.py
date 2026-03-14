@@ -9,7 +9,7 @@ from models import User, Friendship, DailyStory
 friends_bp = Blueprint('friends', __name__, url_prefix='/friends')
 
 
-@friends_bp.route('/')
+@friends_bp.route('/', strict_slashes=False)
 @login_required
 def index():
     # Accepted friends
