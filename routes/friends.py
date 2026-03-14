@@ -20,7 +20,31 @@ def index():
         friend_id=current_user.id, status='pending'
     ).all()
 
-    return render_template('friends/list.html', friends=friends, pending=pending)
+    # Build leaderboard: friends + self
+    all_users = friends + [current_user]
+    leaderboard = []
+    for u in all_users:
+        latest = DailyStory.query.filter_by(
+            user_id=u.id, is_complete=True
+        ).order_by(DailyStory.date.desc()).first()
+
+        attr_total = 0
+        if latest:
+            attr_total = latest.health + latest.sanity + latest.strength
+
+        leaderboard.append({
+            'user_id': u.id,
+            'username': u.username,
+            'score': u.score if hasattr(u, 'score') else 0,
+            'attr_total': attr_total,
+            'is_self': u.id == current_user.id,
+        })
+
+    leaderboard.sort(key=lambda x: (-x['score'], -x['attr_total']))
+
+    return render_template('friends/list.html',
+                           friends=friends, pending=pending,
+                           leaderboard=leaderboard)
 
 
 @friends_bp.route('/add', methods=['POST'])

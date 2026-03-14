@@ -13,6 +13,7 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
+    score = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     stories = db.relationship('DailyStory', backref='user', lazy='dynamic')
@@ -43,6 +44,7 @@ class DailyStory(db.Model):
     boss_strength = db.Column(db.Integer, default=100)
     current_phase = db.Column(db.Integer, default=0)
     is_complete = db.Column(db.Boolean, default=False)
+    victory = db.Column(db.Boolean, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     meals = db.relationship('MealEntry', backref='story', lazy='dynamic',

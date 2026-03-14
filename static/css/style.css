@@ -1014,3 +1014,91 @@ body {
     gap: 1rem;
     flex-wrap: wrap;
 }
+
+/* ===== Leaderboard ===== */
+.leaderboard-table {
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(139, 115, 85, 0.3);
+}
+
+.leaderboard-header {
+    display: flex;
+    align-items: center;
+    padding: 0.7rem 1rem;
+    background: rgba(212, 166, 55, 0.15);
+    color: var(--gold);
+    font-weight: bold;
+    font-size: 0.85rem;
+    border-bottom: 1px solid rgba(139, 115, 85, 0.3);
+}
+
+.leaderboard-row {
+    display: flex;
+    align-items: center;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid rgba(139, 115, 85, 0.15);
+    transition: background 0.2s;
+}
+
+.leaderboard-row:last-child {
+    border-bottom: none;
+}
+
+.leaderboard-row:hover {
+    background: rgba(212, 166, 55, 0.05);
+}
+
+.leaderboard-row.lb-self {
+    background: rgba(212, 166, 55, 0.1);
+    border-left: 3px solid var(--gold);
+}
+
+.lb-rank {
+    width: 50px;
+    text-align: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.lb-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+}
+
+.lb-score {
+    width: 60px;
+    text-align: center;
+    color: var(--gold-light);
+    font-weight: bold;
+}
+
+.lb-attr {
+    width: 70px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.lb-action {
+    width: 90px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.lb-action .btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Score display in ending card */
+.ending-card-score {
+    font-size: 0.9rem;
+    margin-top: 0.3rem;
+    opacity: 0.8;
+}

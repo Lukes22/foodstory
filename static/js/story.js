@@ -275,7 +275,10 @@ function showEndingCard(data) {
     const sanityWin = data.sanity >= (data.boss_sanity || 100);
     const strengthWin = data.strength >= (data.boss_strength || 100);
     const wins = [healthWin, sanityWin, strengthWin].filter(Boolean).length;
-    const victory = wins >= 2;
+    // Use backend victory if available, else calculate locally
+    const victory = data.victory !== undefined && data.victory !== null
+        ? data.victory
+        : wins >= 2;
 
     compEl.innerHTML =
         buildStatCompare('\u2764', '\u751F\u547D', data.health, data.boss_health || 100, healthWin) +
@@ -284,11 +287,14 @@ function showEndingCard(data) {
 
     // Result
     const resultEl = document.getElementById('ending-card-result');
+    const scoreGain = data.score_gain || (victory ? 10 : 3);
     if (victory) {
-        resultEl.textContent = '\u2694 \u526F\u672C\u6311\u6218\u6210\u529F \u2694';
+        resultEl.innerHTML = '\u2694 \u526F\u672C\u6311\u6218\u6210\u529F \u2694' +
+            `<div class="ending-card-score">+${scoreGain} \u79EF\u5206</div>`;
         resultEl.className = 'ending-card-result victory';
     } else {
-        resultEl.textContent = '\u{1F480} \u526F\u672C\u6311\u6218\u5931\u8D25 \u{1F480}';
+        resultEl.innerHTML = '\u{1F480} \u526F\u672C\u6311\u6218\u5931\u8D25 \u{1F480}' +
+            `<div class="ending-card-score">+${scoreGain} \u79EF\u5206</div>`;
         resultEl.className = 'ending-card-result defeat';
     }
 
@@ -527,6 +533,8 @@ async function submitMeal() {
                                     sanity: event.new_sanity,
                                     strength: event.new_strength,
                                     ending_text: event.ending_text || '',
+                                    victory: event.victory,
+                                    score_gain: event.score_gain,
                                 });
                             }, 800);
                         }

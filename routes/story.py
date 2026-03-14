@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request, jsonify, Response, stream
 from flask_login import login_required, current_user
 
 from extensions import db
-from models import DailyStory, MealEntry
+from models import DailyStory, MealEntry, User
 from ai_service import (
     build_opening_messages, build_meal_messages,
     stream_ai_response, parse_ai_response, parse_opening_response, clamp_stat,
@@ -64,6 +64,7 @@ def status():
     return jsonify({
         'phase': story.current_phase,
         'is_complete': story.is_complete,
+        'victory': story.victory,
         'opening_text': story.opening_text,
         'ending_text': story.ending_text,
         'health': story.health,
@@ -216,11 +217,25 @@ def meal():
             update_fields['ending_text'] = parsed['ending_text']
             update_fields['is_complete'] = True
 
+            # Determine boss fight result
+            health_win = new_health >= story.boss_health
+            sanity_win = new_sanity >= story.boss_sanity
+            strength_win = new_strength >= story.boss_strength
+            wins = sum([health_win, sanity_win, strength_win])
+            is_victory = wins >= 2
+            update_fields['victory'] = is_victory
+
+            # Award score to user
+            score_gain = 10 if is_victory else 3
+            User.query.filter_by(id=story.user_id).update(
+                {'score': User.score + score_gain}
+            )
+
         DailyStory.query.filter_by(id=story.id).update(update_fields)
         db.session.commit()
 
         # Send result event
-        yield sse_format({
+        result_data = {
             'type': 'result',
             'health_change': parsed['health_change'],
             'sanity_change': parsed['sanity_change'],
@@ -232,7 +247,12 @@ def meal():
             'new_strength': new_strength,
             'story_text': parsed['story_text'],
             'ending_text': parsed['ending_text'],
-        })
+        }
+        if meal_type == 'dinner':
+            result_data['victory'] = is_victory
+            result_data['score_gain'] = score_gain
+
+        yield sse_format(result_data)
 
         yield sse_format({'type': 'done'})
 

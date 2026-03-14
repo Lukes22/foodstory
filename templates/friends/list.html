@@ -3,6 +3,45 @@
 
 {% block content %}
 <div class="friends-page">
+    <!-- Leaderboard -->
+    <div class="friends-section">
+        <h2>&#127942; 冒险者排行榜</h2>
+        {% if leaderboard %}
+        <div class="leaderboard-table">
+            <div class="leaderboard-header">
+                <span class="lb-rank">排名</span>
+                <span class="lb-name">冒险者</span>
+                <span class="lb-score">积分</span>
+                <span class="lb-attr">属性总和</span>
+                <span class="lb-action"></span>
+            </div>
+            {% for entry in leaderboard %}
+            <div class="leaderboard-row {% if entry.is_self %}lb-self{% endif %}">
+                <span class="lb-rank">
+                    {% if loop.index == 1 %}&#129351;
+                    {% elif loop.index == 2 %}&#129352;
+                    {% elif loop.index == 3 %}&#129353;
+                    {% else %}{{ loop.index }}
+                    {% endif %}
+                </span>
+                <span class="lb-name">{{ entry.username }}{% if entry.is_self %} (我){% endif %}</span>
+                <span class="lb-score">{{ entry.score }}</span>
+                <span class="lb-attr">{{ entry.attr_total }}</span>
+                <span class="lb-action">
+                    {% if entry.is_self %}
+                    <a href="{{ url_for('story.today') }}" class="btn btn-secondary btn-small">我的副本</a>
+                    {% else %}
+                    <a href="{{ url_for('friends.view_story', user_id=entry.user_id) }}" class="btn btn-secondary btn-small">查看故事</a>
+                    {% endif %}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-hint">暂无排行数据</p>
+        {% endif %}
+    </div>
+
     <!-- Add Friend -->
     <div class="friends-section">
         <h2>添加好友</h2>

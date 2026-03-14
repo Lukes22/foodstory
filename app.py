@@ -28,6 +28,8 @@ def create_app():
                 ('daily_stories', 'boss_health', 'INTEGER', "100"),
                 ('daily_stories', 'boss_sanity', 'INTEGER', "100"),
                 ('daily_stories', 'boss_strength', 'INTEGER', "100"),
+                ('users', 'score', 'INTEGER', "0"),
+                ('daily_stories', 'victory', 'BOOLEAN', "NULL"),
             ]:
                 try:
                     conn.execute(db.text(
