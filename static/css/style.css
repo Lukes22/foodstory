@@ -1102,3 +1102,113 @@ body {
     margin-top: 0.3rem;
     opacity: 0.8;
 }
+
+/* ===== Nutrition Card ===== */
+.nutrition-card {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--gold-dark);
+    border-radius: 6px;
+}
+
+.nutrition-title {
+    font-size: 0.85rem;
+    color: var(--gold);
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.nutrition-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0;
+    font-size: 0.82rem;
+}
+
+.nutrition-row + .nutrition-row {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.nutrition-label {
+    width: 70px;
+    flex-shrink: 0;
+    color: var(--text-secondary);
+}
+
+.nutrition-value {
+    width: 45px;
+    flex-shrink: 0;
+    text-align: right;
+    font-weight: bold;
+}
+
+.nutrition-value.in-range {
+    color: #6fcf6f;
+}
+
+.nutrition-value.out-range {
+    color: #e74c3c;
+}
+
+.nutrition-bar {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+    min-width: 60px;
+}
+
+.nutrition-bar-zone {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background: rgba(111, 207, 111, 0.15);
+    border-left: 1px solid rgba(111, 207, 111, 0.4);
+    border-right: 1px solid rgba(111, 207, 111, 0.4);
+    border-radius: 4px;
+}
+
+.nutrition-bar-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.nutrition-bar-fill.in-range {
+    background: linear-gradient(90deg, #4caf50, #6fcf6f);
+}
+
+.nutrition-bar-fill.out-range {
+    background: linear-gradient(90deg, #e74c3c, #f39c12);
+}
+
+.nutrition-range {
+    width: 72px;
+    flex-shrink: 0;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+.nutrition-status {
+    width: 18px;
+    flex-shrink: 0;
+    text-align: center;
+    font-weight: bold;
+}
+
+.nutrition-status.in-range {
+    color: #6fcf6f;
+}
+
+.nutrition-status.out-range {
+    color: #e74c3c;
+}

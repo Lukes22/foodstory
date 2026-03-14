@@ -67,13 +67,20 @@ Boss属性范围100-170，根据副本等级调整：普通100-120，困难115-1
 然后在末尾输出JSON数据块，用 ```json 和 ``` 包裹:
 ```json
 {
-  "health_change": 数字,
-  "sanity_change": 数字,
-  "strength_change": 数字,
+  "carbs": 碳水化合物克数(整数),
+  "fat": 脂肪克数(整数),
+  "protein": 蛋白质克数(整数),
   "equipment": "装备名（不含【】）",
   "potion": "药水名（不含【】）"
 }
 ```
+
+===== 营养估算规则 =====
+- 你必须根据玩家输入的食物，合理估算该餐的碳水化合物、脂肪、蛋白质总克数
+- 估算要基于常见食物的真实营养成分（如一碗米饭约60g碳水，一个鸡蛋约6g蛋白质7g脂肪）
+- JSON中只需输出 carbs/fat/protein 三个营养素数值，不需要输出 health_change 等属性变化
+- 系统会根据营养值自动计算属性变化，你在正文中写的【生命+X】数值仅供参考，会被系统覆盖
+- equipment和potion字段必须有值，不能为null
 
 ===== 结局格式 =====
 当晚餐结束后，在正常用餐内容之后，用 "=== 冒险结局 ===" 分隔，然后输出:
@@ -83,8 +90,7 @@ Boss属性范围100-170，根据副本等级调整：普通100-120，困难115-1
 属性规则:
 - 每项属性变化范围: -30 ~ +30
 - 生命/敏捷/力量的值范围是0到200
-- equipment和potion字段必须有值，不能为null
-- JSON中的数值必须与正文中【生命+X】【敏捷+X】【力量+X】的数值完全一致
+- 属性变化由系统根据营养值自动计算，正文中的【生命+X】仅供展示参考
 - JSON中的equipment必须与正文中装备【装备名】完全一致
 - JSON中的potion必须与正文中药水【药水名】完全一致
 - 用中文回答"""
@@ -94,6 +100,67 @@ MEAL_LABELS = {
     'lunch': '午餐',
     'dinner': '晚餐',
 }
+
+# 中国居民膳食指南 2022: 每餐推荐营养素范围 (克)
+# 基于 2000kcal/天, 碳水50-65%, 脂肪20-30%, 蛋白质10-15%
+# 三餐比例: 早餐30%, 午餐40%, 晚餐30%
+NUTRITION_RANGES = {
+    'breakfast': {'carbs': (75, 100), 'fat': (13, 20), 'protein': (15, 23)},
+    'lunch':     {'carbs': (100, 130), 'fat': (18, 27), 'protein': (20, 30)},
+    'dinner':    {'carbs': (75, 100), 'fat': (13, 20), 'protein': (15, 23)},
+}
+
+
+def nutrition_to_change(actual, low, high):
+    """Calculate attribute change from a single nutrient vs recommended range.
+
+    Returns int in [-25, +20]. Caller should clamp to [-30, +30].
+    """
+    mid = (low + high) / 2
+    half = (high - low) / 2
+    if low <= actual <= high:
+        closeness = 1 - abs(actual - mid) / half if half > 0 else 1
+        return round(5 + 15 * closeness)
+    elif actual < low:
+        deficit = (low - actual) / mid if mid > 0 else 1
+        return -round(25 * min(deficit, 1.0))
+    else:
+        excess = (actual - high) / mid if mid > 0 else 1
+        return -round(25 * min(excess, 1.0))
+
+
+def calculate_nutrition_attributes(meal_type, carbs, fat, protein):
+    """Calculate attribute changes from nutrition values for a given meal."""
+    ranges = NUTRITION_RANGES.get(meal_type, NUTRITION_RANGES['lunch'])
+    return {
+        'health_change': max(-30, min(30, nutrition_to_change(
+            carbs, *ranges['carbs']))),
+        'sanity_change': max(-30, min(30, nutrition_to_change(
+            fat, *ranges['fat']))),
+        'strength_change': max(-30, min(30, nutrition_to_change(
+            protein, *ranges['protein']))),
+    }
+
+
+def patch_story_text_attributes(story_text, health_change, sanity_change,
+                                strength_change):
+    """Replace attribute bracket values in story text with calculated values."""
+    def fmt(val):
+        return f'+{val}' if val >= 0 else str(val)
+
+    text = story_text
+    text = re.sub(r'【生命[+\-]\d+】', f'【生命{fmt(health_change)}】', text)
+    text = re.sub(r'【敏捷[+\-]\d+】', f'【敏捷{fmt(sanity_change)}】', text)
+    text = re.sub(r'【力量[+\-]\d+】', f'【力量{fmt(strength_change)}】', text)
+
+    # If no attribute line exists, append one
+    if '【生命' not in text:
+        attr_line = (f'\n\n【生命{fmt(health_change)}】'
+                     f'【敏捷{fmt(sanity_change)}】'
+                     f'【力量{fmt(strength_change)}】')
+        text += attr_line
+
+    return text
 
 
 def build_opening_messages(date_str):
@@ -132,13 +199,20 @@ def build_meal_messages(story, food_input, meal_type):
             'role': 'user',
             'content': f'我{label}吃了: {meal.food_input}',
         })
-        # Reconstruct assistant response with JSON block
-        json_block = json.dumps({
-            'health_change': meal.health_change,
-            'sanity_change': meal.sanity_change,
-            'strength_change': meal.strength_change,
+        # Reconstruct assistant response with nutrition JSON block
+        json_data = {
             'equipment': meal.equipment_gained or None,
-        }, ensure_ascii=False)
+            'potion': getattr(meal, 'potion_gained', None) or None,
+        }
+        if hasattr(meal, 'carbs') and meal.carbs is not None:
+            json_data['carbs'] = meal.carbs
+            json_data['fat'] = meal.fat
+            json_data['protein'] = meal.protein
+        else:
+            json_data['carbs'] = 0
+            json_data['fat'] = 0
+            json_data['protein'] = 0
+        json_block = json.dumps(json_data, ensure_ascii=False)
         messages.append({
             'role': 'assistant',
             'content': f'{meal.story_text}\n\n```json\n{json_block}\n```',
@@ -149,13 +223,17 @@ def build_meal_messages(story, food_input, meal_type):
     equipment_list = story.get_equipment_list()
     eq_str = '、'.join(equipment_list) if equipment_list else '无'
 
+    ranges = NUTRITION_RANGES.get(meal_type, NUTRITION_RANGES['lunch'])
     prompt = (
         f'我{label}吃了: {food_input}。\n'
         f'当前属性——生命:{story.health}, 敏捷:{story.sanity}, 力量:{story.strength}。\n'
         f'已有装备: {eq_str}。\n'
+        f'本餐推荐营养范围——碳水:{ranges["carbs"][0]}-{ranges["carbs"][1]}g, '
+        f'脂肪:{ranges["fat"][0]}-{ranges["fat"][1]}g, '
+        f'蛋白质:{ranges["protein"][0]}-{ranges["protein"][1]}g。\n'
         f'请只根据「{food_input}」生成内容，不要添加其他食物。\n'
         f'严格按照用餐格式输出：装备（用【】包裹装备名）+ 药水 + 状态 + 属性变化行 + 可选检定。\n'
-        f'末尾输出JSON数据块。'
+        f'末尾输出JSON数据块（包含carbs/fat/protein营养估算和equipment/potion）。'
     )
 
     if meal_type == 'dinner':
@@ -222,8 +300,9 @@ def stream_ai_response(messages):
 def parse_ai_response(full_text):
     """Extract JSON data block and story text from AI response.
 
-    Attribute changes are primarily extracted from bracket text like 【生命+15】
-    to ensure consistency with displayed text. JSON is used as fallback.
+    Extracts nutrition values (carbs, fat, protein) from JSON for attribute
+    calculation. Attribute brackets in text are kept as fallback if nutrition
+    data is missing.
     """
     result = {
         'health_change': 0,
@@ -231,10 +310,12 @@ def parse_ai_response(full_text):
         'strength_change': 0,
         'equipment': None,
         'potion': None,
+        'carbs': None,
+        'fat': None,
+        'protein': None,
     }
 
-    # ---- Step 1: Parse from text brackets (primary source) ----
-    # Attribute changes from 【生命+X】【敏捷-X】【力量+X】
+    # ---- Step 1: Parse from text brackets (fallback for attributes) ----
     text_health = re.search(r'【生命([+\-]\d+)】', full_text)
     text_sanity = re.search(r'【敏捷([+\-]\d+)】', full_text)
     text_strength = re.search(r'【力量([+\-]\d+)】', full_text)
@@ -256,18 +337,20 @@ def parse_ai_response(full_text):
     if text_potion:
         result['potion'] = text_potion.group(1).strip()
 
-    # ---- Step 2: Parse JSON block (fallback for missing values) ----
+    # ---- Step 2: Parse JSON block ----
     match = re.search(r'```json\s*(.*?)\s*```', full_text, re.DOTALL)
     if match:
         try:
             data = json.loads(match.group(1))
-            # Only use JSON values if text parsing didn't find them
-            if not text_health:
-                result['health_change'] = max(-30, min(30, int(data.get('health_change', 0))))
-            if not text_sanity:
-                result['sanity_change'] = max(-30, min(30, int(data.get('sanity_change', 0))))
-            if not text_strength:
-                result['strength_change'] = max(-30, min(30, int(data.get('strength_change', 0))))
+            # Extract nutrition values
+            if 'carbs' in data and data['carbs'] is not None:
+                result['carbs'] = max(0, float(data['carbs']))
+            if 'fat' in data and data['fat'] is not None:
+                result['fat'] = max(0, float(data['fat']))
+            if 'protein' in data and data['protein'] is not None:
+                result['protein'] = max(0, float(data['protein']))
+
+            # Equipment/potion fallback from JSON
             if not result['equipment']:
                 equipment = data.get('equipment')
                 if equipment and equipment != 'null' and str(equipment).lower() != 'none':
@@ -276,6 +359,15 @@ def parse_ai_response(full_text):
                 potion = data.get('potion')
                 if potion and potion != 'null' and str(potion).lower() != 'none':
                     result['potion'] = str(potion).strip('【】「」')
+
+            # Attribute fallback from JSON (only if no nutrition AND no text brackets)
+            if result['carbs'] is None:
+                if not text_health:
+                    result['health_change'] = max(-30, min(30, int(data.get('health_change', 0))))
+                if not text_sanity:
+                    result['sanity_change'] = max(-30, min(30, int(data.get('sanity_change', 0))))
+                if not text_strength:
+                    result['strength_change'] = max(-30, min(30, int(data.get('strength_change', 0))))
         except (json.JSONDecodeError, ValueError, TypeError):
             pass
 

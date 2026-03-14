@@ -63,6 +63,27 @@
                         <span class="change-item equipment">&#127890; 获得: {{ meal.equipment_gained }}</span>
                         {% endif %}
                     </div>
+                    {% if meal.carbs is not none %}
+                    {% set nr = {'breakfast': {'carbs': [75,100], 'fat': [13,20], 'protein': [15,23]}, 'lunch': {'carbs': [100,130], 'fat': [18,27], 'protein': [20,30]}, 'dinner': {'carbs': [75,100], 'fat': [13,20], 'protein': [15,23]}} %}
+                    {% set r = nr.get(meal.meal_type, nr['lunch']) %}
+                    <div class="nutrition-card">
+                        <div class="nutrition-title">&#9879;&#65039; 营养分析</div>
+                        {% set nutrients = [
+                            ('&#127806; 碳水', meal.carbs|round|int, r['carbs']),
+                            ('&#129480; 脂肪', meal.fat|round|int, r['fat']),
+                            ('&#129385; 蛋白质', meal.protein|round|int, r['protein'])
+                        ] %}
+                        {% for label, actual, range in nutrients %}
+                        {% set in_range = actual >= range[0] and actual <= range[1] %}
+                        <div class="nutrition-row">
+                            <span class="nutrition-label">{{ label | safe }}</span>
+                            <span class="nutrition-value {{ 'in-range' if in_range else 'out-range' }}">{{ actual }}g</span>
+                            <span class="nutrition-range">{{ range[0] }}-{{ range[1] }}g</span>
+                            <span class="nutrition-status {{ 'in-range' if in_range else 'out-range' }}">{{ '&#10004;' if in_range else '&#10008;' | safe }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
 

@@ -9,6 +9,7 @@ from models import DailyStory, MealEntry, User
 from ai_service import (
     build_opening_messages, build_meal_messages,
     stream_ai_response, parse_ai_response, parse_opening_response, clamp_stat,
+    calculate_nutrition_attributes, patch_story_text_attributes, NUTRITION_RANGES,
 )
 
 story_bp = Blueprint('story', __name__, url_prefix='/story')
@@ -46,7 +47,7 @@ def status():
     story = get_or_create_today_story()
     meals = []
     for m in story.meals.all():
-        meals.append({
+        meal_data = {
             'meal_type': m.meal_type,
             'meal_label': MEAL_LABELS.get(m.meal_type, m.meal_type),
             'food_input': m.food_input,
@@ -56,7 +57,16 @@ def status():
             'strength_change': m.strength_change,
             'equipment_gained': m.equipment_gained,
             'potion_gained': m.potion_gained,
-        })
+            'carbs': m.carbs,
+            'fat': m.fat,
+            'protein': m.protein,
+        }
+        ranges = NUTRITION_RANGES.get(m.meal_type)
+        if ranges:
+            meal_data['nutrition_ranges'] = {
+                k: list(v) for k, v in ranges.items()
+            }
+        meals.append(meal_data)
 
     next_meal = PHASE_MEAL_MAP.get(story.current_phase)
     next_meal_label = MEAL_LABELS.get(next_meal, '') if next_meal else ''
@@ -173,6 +183,22 @@ def meal():
         # Parse AI response
         parsed = parse_ai_response(full_text)
 
+        # Calculate attribute changes from nutrition if available
+        carbs = parsed.get('carbs')
+        fat = parsed.get('fat')
+        protein = parsed.get('protein')
+
+        if carbs is not None and fat is not None and protein is not None:
+            attr = calculate_nutrition_attributes(meal_type, carbs, fat, protein)
+            parsed['health_change'] = attr['health_change']
+            parsed['sanity_change'] = attr['sanity_change']
+            parsed['strength_change'] = attr['strength_change']
+            parsed['story_text'] = patch_story_text_attributes(
+                parsed['story_text'],
+                attr['health_change'], attr['sanity_change'],
+                attr['strength_change'],
+            )
+
         # Create meal entry
         entry = MealEntry(
             story_id=story.id,
@@ -184,6 +210,9 @@ def meal():
             strength_change=parsed['strength_change'],
             equipment_gained=parsed['equipment'] or '',
             potion_gained=parsed['potion'] or '',
+            carbs=carbs,
+            fat=fat,
+            protein=protein,
         )
         db.session.add(entry)
         db.session.flush()
@@ -247,7 +276,15 @@ def meal():
             'new_strength': new_strength,
             'story_text': parsed['story_text'],
             'ending_text': parsed['ending_text'],
+            'carbs': carbs,
+            'fat': fat,
+            'protein': protein,
         }
+        ranges = NUTRITION_RANGES.get(meal_type)
+        if ranges:
+            result_data['nutrition_ranges'] = {
+                k: list(v) for k, v in ranges.items()
+            }
         if meal_type == 'dinner':
             result_data['victory'] = is_victory
             result_data['score_gain'] = score_gain

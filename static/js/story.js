@@ -82,6 +82,10 @@ function renderState(data) {
         for (const meal of data.meals) {
             const icon = MEAL_ICONS[meal.meal_type] || '';
             const label = meal.meal_label || meal.meal_type;
+            const nutrition = (meal.carbs != null && meal.nutrition_ranges)
+                ? { carbs: meal.carbs, fat: meal.fat, protein: meal.protein,
+                    nutrition_ranges: meal.nutrition_ranges }
+                : null;
             appendStorySection(
                 meal.meal_type,
                 `${icon} ${label}: ${meal.food_input}`,
@@ -91,7 +95,8 @@ function renderState(data) {
                     sanity_change: meal.sanity_change,
                     strength_change: meal.strength_change,
                     equipment: meal.equipment_gained,
-                }
+                },
+                nutrition
             );
         }
 
@@ -195,7 +200,7 @@ function appendBossBar(data) {
     storyContent.appendChild(bar);
 }
 
-function appendStorySection(id, header, text, changes) {
+function appendStorySection(id, header, text, changes, nutrition) {
     const storyContent = document.getElementById('story-content');
     const section = document.createElement('div');
     section.className = 'story-section';
@@ -230,8 +235,51 @@ function appendStorySection(id, header, text, changes) {
         html += '</div>';
     }
 
+    if (nutrition) {
+        html += renderNutritionCard(nutrition);
+    }
+
     section.innerHTML = html;
     storyContent.appendChild(section);
+}
+
+function renderNutritionCard(data) {
+    if (data.carbs == null || !data.nutrition_ranges) return '';
+
+    const rows = [
+        { label: '\u{1F33E} \u78B3\u6C34', actual: data.carbs, range: data.nutrition_ranges.carbs },
+        { label: '\u{1F9C8} \u8102\u80AA', actual: data.fat, range: data.nutrition_ranges.fat },
+        { label: '\u{1F969} \u86CB\u767D\u8D28', actual: data.protein, range: data.nutrition_ranges.protein },
+    ];
+
+    let html = '<div class="nutrition-card"><div class="nutrition-title">\u2697\uFE0F \u8425\u517B\u5206\u6790</div>';
+    for (const row of rows) {
+        const [low, high] = row.range;
+        const actual = Math.round(row.actual);
+        const inRange = actual >= low && actual <= high;
+        const statusCls = inRange ? 'in-range' : 'out-range';
+        const statusIcon = inRange ? '\u2714' : '\u2718';
+
+        // Progress bar: map actual to visual position
+        // Bar represents 0 to high*2, with recommended zone highlighted
+        const barMax = high * 2;
+        const fillPct = Math.min(100, (actual / barMax) * 100);
+        const zoneLPct = (low / barMax) * 100;
+        const zoneWPct = ((high - low) / barMax) * 100;
+
+        html += `<div class="nutrition-row">` +
+            `<span class="nutrition-label">${row.label}</span>` +
+            `<span class="nutrition-value ${statusCls}">${actual}g</span>` +
+            `<div class="nutrition-bar">` +
+            `<div class="nutrition-bar-zone" style="left:${zoneLPct}%;width:${zoneWPct}%"></div>` +
+            `<div class="nutrition-bar-fill ${statusCls}" style="width:${fillPct}%"></div>` +
+            `</div>` +
+            `<span class="nutrition-range">${low}-${high}g</span>` +
+            `<span class="nutrition-status ${statusCls}">${statusIcon}</span>` +
+            `</div>`;
+    }
+    html += '</div>';
+    return html;
 }
 
 function appendEnding(text) {
@@ -513,6 +561,21 @@ async function submitMeal() {
                         }
                         changes.innerHTML = changesHtml;
                         section.appendChild(changes);
+
+                        // Append nutrition card if available
+                        if (event.carbs != null && event.nutrition_ranges) {
+                            const nutritionHtml = renderNutritionCard({
+                                carbs: event.carbs,
+                                fat: event.fat,
+                                protein: event.protein,
+                                nutrition_ranges: event.nutrition_ranges,
+                            });
+                            if (nutritionHtml) {
+                                const nutritionDiv = document.createElement('div');
+                                nutritionDiv.innerHTML = nutritionHtml;
+                                section.appendChild(nutritionDiv.firstElementChild);
+                            }
+                        }
 
                         // Show ending card if dinner (check mealType)
                         if (mealType === 'dinner') {

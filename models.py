@@ -86,6 +86,9 @@ class MealEntry(db.Model):
     strength_change = db.Column(db.Integer, default=0)
     equipment_gained = db.Column(db.String(200), default='')
     potion_gained = db.Column(db.String(200), default='')
+    carbs = db.Column(db.Float, nullable=True)
+    fat = db.Column(db.Float, nullable=True)
+    protein = db.Column(db.Float, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 

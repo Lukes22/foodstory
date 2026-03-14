@@ -30,6 +30,9 @@ def create_app():
                 ('daily_stories', 'boss_strength', 'INTEGER', "100"),
                 ('users', 'score', 'INTEGER', "0"),
                 ('daily_stories', 'victory', 'BOOLEAN', "NULL"),
+                ('meal_entries', 'carbs', 'REAL', "NULL"),
+                ('meal_entries', 'fat', 'REAL', "NULL"),
+                ('meal_entries', 'protein', 'REAL', "NULL"),
             ]:
                 try:
                     conn.execute(db.text(
@@ -50,4 +53,4 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0', port=7860)
