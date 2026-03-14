@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}好友 - 美食故事{% endblock %}
+
+{% block content %}
+<div class="friends-page">
+    <!-- Add Friend -->
+    <div class="friends-section">
+        <h2>添加好友</h2>
+        <div class="friend-add-form">
+            <input type="text" id="friend-username" placeholder="输入冒险者用户名..."
+                   onkeydown="if(event.key==='Enter')addFriend()">
+            <button class="btn btn-primary btn-small" onclick="addFriend()">添加</button>
+        </div>
+        <div id="add-message" style="margin-top:0.5rem;font-size:0.9rem;"></div>
+    </div>
+
+    <!-- Pending Requests -->
+    {% if pending %}
+    <div class="friends-section">
+        <h2>待处理的好友请求</h2>
+        {% for req in pending %}
+        <div class="friend-item" id="pending-{{ req.id }}">
+            <span class="friend-name">{{ req.user.username }}</span>
+            <div class="friend-actions">
+                <button class="btn btn-primary btn-small" onclick="acceptFriend({{ req.id }})">接受</button>
+                <button class="btn btn-danger btn-small" onclick="rejectFriend({{ req.id }})">拒绝</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Friends List -->
+    <div class="friends-section">
+        <h2>我的好友</h2>
+        {% if friends %}
+            {% for friend in friends %}
+            <div class="friend-item">
+                <span class="friend-name">{{ friend.username }}</span>
+                <div class="friend-actions">
+                    <a href="{{ url_for('friends.view_story', user_id=friend.id) }}"
+                       class="btn btn-secondary btn-small">查看今日故事</a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="empty-hint">还没有好友，快去添加吧!</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/friends.js') }}"></script>
+{% endblock %}

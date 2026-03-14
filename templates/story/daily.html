@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}今日冒险 - 美食故事{% endblock %}
+
+{% block content %}
+<div class="story-page">
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="stat">
+            <span class="stat-icon">&#10084;</span>
+            <span class="stat-label">生命</span>
+            <span class="stat-value health" id="stat-health">{{ story.health }}</span>
+            <span class="stat-change" id="change-health"></span>
+        </div>
+        <div class="stat">
+            <span class="stat-icon">&#9889;</span>
+            <span class="stat-label">敏捷</span>
+            <span class="stat-value sanity" id="stat-sanity">{{ story.sanity }}</span>
+            <span class="stat-change" id="change-sanity"></span>
+        </div>
+        <div class="stat">
+            <span class="stat-icon">&#9876;</span>
+            <span class="stat-label">力量</span>
+            <span class="stat-value strength" id="stat-strength">{{ story.strength }}</span>
+            <span class="stat-change" id="change-strength"></span>
+        </div>
+        <div class="equipment-bar">
+            <span>&#9876; 装备:</span>
+            <div class="equipment-list" id="equipment-list">
+                <span class="empty-hint" id="no-equipment">无</span>
+            </div>
+        </div>
+        <div class="equipment-bar">
+            <span>&#127866; 药水:</span>
+            <div class="equipment-list" id="potion-list">
+                <span class="empty-hint" id="no-potion">无</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Story Area -->
+    <div class="story-area" id="story-area">
+        <div class="story-empty" id="story-empty">
+            <h2>今日冒险</h2>
+            <p>{{ story.date.strftime('%Y年%m月%d日') }} - 新的冒险等待着你</p>
+            <button class="btn btn-primary" id="btn-start" onclick="startAdventure()">
+                开始今日冒险
+            </button>
+        </div>
+        <div id="story-content" style="display:none;"></div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area" id="input-area" style="display:none;">
+        <div class="input-phase" id="input-phase"></div>
+        <div class="input-row">
+            <input type="text" id="food-input" placeholder="输入你吃了什么..."
+                   onkeydown="if(event.key==='Enter')submitMeal()">
+            <button class="btn btn-primary" id="btn-submit" onclick="submitMeal()">
+                出发!
+            </button>
+        </div>
+    </div>
+
+    <div class="input-area" id="complete-area" style="display:none;">
+        <div class="input-complete">今日冒险已结束! 明日再来挑战吧</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/story.js') }}"></script>
+{% endblock %}

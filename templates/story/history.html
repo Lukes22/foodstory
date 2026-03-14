@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}历史故事 - 美食故事{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="color:var(--gold);margin-bottom:1.5rem;">冒险历史</h1>
+
+    {% if stories %}
+    <div class="history-list">
+        {% for story in stories %}
+        <div class="history-card" onclick="toggleHistory(this, {{ story.id }})">
+            <div class="history-card-header">
+                <span class="history-date">{{ story.date.strftime('%Y年%m月%d日') }}</span>
+                {% if story.is_complete %}
+                <span class="history-status complete">已完结</span>
+                {% else %}
+                <span class="history-status incomplete">进行中</span>
+                {% endif %}
+            </div>
+            <div class="history-stats">
+                <span>&#10084; {{ story.health }}</span>
+                <span>&#129504; {{ story.sanity }}</span>
+                <span>&#9876; {{ story.strength }}</span>
+                {% set eq = story.get_equipment_list() %}
+                {% if eq %}
+                <span>&#127890; {{ eq | join('、') }}</span>
+                {% endif %}
+            </div>
+            <div class="history-detail" style="display:none;margin-top:1rem;">
+                {% if story.opening_text %}
+                <div class="story-section">
+                    <div class="story-section-header">&#128220; 冒险开始</div>
+                    <div class="story-text">{{ story.opening_text }}</div>
+                </div>
+                {% endif %}
+
+                {% set meal_icons = {'breakfast': '&#127859;', 'lunch': '&#127836;', 'dinner': '&#127830;'} %}
+                {% set meal_labels = {'breakfast': '早餐', 'lunch': '午餐', 'dinner': '晚餐'} %}
+                {% for meal in story.meals.all() %}
+                <div class="story-section">
+                    <div class="story-section-header">
+                        {{ meal_icons.get(meal.meal_type, '') | safe }}
+                        {{ meal_labels.get(meal.meal_type, meal.meal_type) }}: {{ meal.food_input }}
+                    </div>
+                    <div class="story-text">{{ meal.story_text }}</div>
+                    <div class="story-changes">
+                        {% if meal.health_change != 0 %}
+                        <span class="change-item {{ 'positive' if meal.health_change > 0 else 'negative' }}">
+                            &#10084; {{ '+' if meal.health_change > 0 }}{{ meal.health_change }}
+                        </span>
+                        {% endif %}
+                        {% if meal.sanity_change != 0 %}
+                        <span class="change-item {{ 'positive' if meal.sanity_change > 0 else 'negative' }}">
+                            &#129504; {{ '+' if meal.sanity_change > 0 }}{{ meal.sanity_change }}
+                        </span>
+                        {% endif %}
+                        {% if meal.strength_change != 0 %}
+                        <span class="change-item {{ 'positive' if meal.strength_change > 0 else 'negative' }}">
+                            &#9876; {{ '+' if meal.strength_change > 0 }}{{ meal.strength_change }}
+                        </span>
+                        {% endif %}
+                        {% if meal.equipment_gained %}
+                        <span class="change-item equipment">&#127890; 获得: {{ meal.equipment_gained }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+
+                {% if story.is_complete and story.ending_text %}
+                <div class="story-ending">
+                    <h2>&#10024; 冒险结局 &#10024;</h2>
+                    <div class="story-text">{{ story.ending_text }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="friends-section" style="text-align:center;">
+        <p class="empty-hint">还没有冒险记录，快去开始今日冒险吧!</p>
+        <a href="{{ url_for('story.today') }}" class="btn btn-primary" style="margin-top:1rem;">开始冒险</a>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleHistory(card, storyId) {
+    const detail = card.querySelector('.history-detail');
+    if (detail.style.display === 'none') {
+        detail.style.display = 'block';
+    } else {
+        detail.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

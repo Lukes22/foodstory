@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ friend.username if friend else '好友' }}的故事 - 美食故事{% endblock %}
+
+{% block content %}
+<div class="container">
+    {% if error %}
+    <div class="flash flash-error">{{ error }}</div>
+    {% elif not story %}
+    <div class="friends-section" style="text-align:center;">
+        <h2>{{ friend.username }} 今日还没有开始冒险</h2>
+        <p class="empty-hint">等TA开始冒险后再来看吧</p>
+    </div>
+    {% else %}
+    <div class="friends-section">
+        <h2 style="margin-bottom:1.5rem;">{{ friend.username }} 的今日冒险 ({{ story.date.strftime('%Y年%m月%d日') }})</h2>
+
+        <!-- Stats -->
+        <div class="status-bar" style="margin-bottom:1.5rem;">
+            <div class="stat">
+                <span class="stat-icon">&#10084;</span>
+                <span class="stat-label">生命</span>
+                <span class="stat-value health">{{ story.health }}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-icon">&#9889;</span>
+                <span class="stat-label">敏捷</span>
+                <span class="stat-value sanity">{{ story.sanity }}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-icon">&#9876;</span>
+                <span class="stat-label">力量</span>
+                <span class="stat-value strength">{{ story.strength }}</span>
+            </div>
+        </div>
+
+        <!-- Opening -->
+        {% if story.opening_text %}
+        <div class="story-section">
+            <div class="story-section-header">&#127984; 今日副本</div>
+            <div class="story-text">{{ story.opening_text }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Meals -->
+        {% set meal_icons = {'breakfast': '&#127859;', 'lunch': '&#127836;', 'dinner': '&#127830;'} %}
+        {% set meal_labels = {'breakfast': '早餐', 'lunch': '午餐', 'dinner': '晚餐'} %}
+        {% for meal in story.meals.all() %}
+        <div class="story-section">
+            <div class="story-section-header">
+                {{ meal_icons.get(meal.meal_type, '') | safe }}
+                {{ meal_labels.get(meal.meal_type, meal.meal_type) }}: {{ meal.food_input }}
+            </div>
+            <div class="story-text">{{ meal.story_text }}</div>
+            <div class="story-changes">
+                {% if meal.health_change != 0 %}
+                <span class="change-item {{ 'positive' if meal.health_change > 0 else 'negative' }}">
+                    &#10084; {{ '+' if meal.health_change > 0 }}{{ meal.health_change }}
+                </span>
+                {% endif %}
+                {% if meal.sanity_change != 0 %}
+                <span class="change-item {{ 'positive' if meal.sanity_change > 0 else 'negative' }}">
+                    &#9889; {{ '+' if meal.sanity_change > 0 }}{{ meal.sanity_change }}
+                </span>
+                {% endif %}
+                {% if meal.strength_change != 0 %}
+                <span class="change-item {{ 'positive' if meal.strength_change > 0 else 'negative' }}">
+                    &#9876; {{ '+' if meal.strength_change > 0 }}{{ meal.strength_change }}
+                </span>
+                {% endif %}
+                {% if meal.equipment_gained %}
+                <span class="change-item equipment">&#127890; 获得: {{ meal.equipment_gained }}</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+
+        <!-- Ending -->
+        {% if story.is_complete and story.ending_text %}
+        <div class="story-ending">
+            <h2>&#127942; 副本结算 &#127942;</h2>
+            <div class="story-text">{{ story.ending_text }}</div>
+        </div>
+        {% elif not story.is_complete %}
+        <div class="empty-hint" style="padding:1rem;">冒险还在继续中...</div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div style="text-align:center;margin-top:1.5rem;">
+        <a href="{{ url_for('friends.index') }}" class="btn btn-secondary">返回好友列表</a>
+    </div>
+</div>
+{% endblock %}

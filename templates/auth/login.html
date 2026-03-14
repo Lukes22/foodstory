@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}登录 - 美食故事{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card">
+        <h1 class="auth-title">欢迎回来，冒险者</h1>
+        <p class="auth-subtitle">登录以继续你的美食冒险</p>
+
+        <form method="POST" class="auth-form">
+            <div class="form-group">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" required
+                       placeholder="输入你的冒险者名称" autocomplete="username">
+            </div>
+
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" required
+                       placeholder="输入你的密码" autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="btn btn-primary">进入冒险</button>
+        </form>
+
+        <p class="auth-link">
+            还没有账号？<a href="{{ url_for('auth.register') }}">注册新冒险者</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
